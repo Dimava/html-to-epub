@@ -1,17 +1,21 @@
-const path = require("path");
-const fs = require("fs");
-const { uuid, isString, isArray, isEmpty, extend } = require("./helpers");
-const uslug = require("uslug");
-const ejs = require("ejs");
-const cheerio = require("cheerio");
-const entities = require("entities");
-const request = require("superagent");
-const fsextra = require("fs-extra");
+import path = require("path");
+import fs = require("fs");
+import uslug = require("uslug");
+import ejs = require("ejs");
+import cheerio = require("cheerio");
+import entities = require("entities");
+import request = require("superagent");
+import fsextra = require("fs-extra");
 const { remove: diacritics } = require("diacritics");
-const mime = require("mime");
-const archiver = require("archiver");
+import mime = require("mime");
+import archiver = require("archiver");
 
-class EPub {
+class Epub {
+	options: any;
+	defer: any;
+	id: any;
+	uuid: any;
+
 	constructor(options, output) {
 		this.options = options;
 		const self = this;
@@ -104,14 +108,15 @@ class EPub {
 				allowedXhtml11Tags = ["div", "p", "h1", "h2", "h3", "h4", "h5", "h6", "ul", "ol", "li", "dl", "dt", "dd", "address", "hr", "pre", "blockquote", "center", "ins", "del", "a", "span", "bdo", "br", "em", "strong", "dfn", "code", "samp", "kbd", "bar", "cite", "abbr", "acronym", "q", "sub", "sup", "tt", "i", "b", "big", "small", "u", "s", "strike", "basefont", "font", "object", "param", "img", "table", "caption", "colgroup", "col", "thead", "tfoot", "tbody", "tr", "th", "td", "embed", "applet", "iframe", "img", "map", "noscript", "ns:svg", "object", "script", "table", "tt", "var"];
 
 			let $ = cheerio.load(content.data, {
-				withDomLvl1: true,
+				// FIXME: unsupported arg
+				// withDomLvl1: true,
 				lowerCaseTags: true,
 				recognizeSelfClosing: true
 			});
 
 			$($("body > *").get().reverse()).each(function(elemIndex, elem) {
-				const attrs = elem.attribs,
-					that = this;
+				const attrs = (elem.type != 'text' && elem.type != 'comment') && elem.attribs;
+				const that = this;
 				if (["img", "br", "hr"].includes(that.name)) {
 					if (that.name === "img") {
 						$(that).attr("alt", $(that).attr("alt") || "image-placeholder");
@@ -164,7 +169,9 @@ class EPub {
 			this.options._coverExtension = mime.getExtension(this.options._coverMediaType);
 		}
 
-		return this.render();
+		// FIXME: constructor can't return
+		// make Epub thenable maybe
+		this.render();
 	}
 
 	async render() {
@@ -260,7 +267,7 @@ class EPub {
 		fs.writeFileSync(path.resolve(self.uuid , "./OEBPS/toc.xhtml"), await ejs.renderFile(htmlTocPath, self.options));
 	}
 
-	makeCover() {
+	makeCover(): Promise<void> {
 		if (!this.options.cover) {
 			return;
 		}
@@ -269,7 +276,7 @@ class EPub {
 			destPath = path.resolve(this.uuid, ("./OEBPS/cover." + this.options._coverExtension));
 
 		return new Promise((resolve, reject) => {
-			let writeStream = null;
+			let writeStream: ReturnType<(typeof fs)['createReadStream']> | ReturnType<(typeof request)['get']> = null; 
 			if (self.options.cover.slice(0,4) === "http") {
 				writeStream = request.get(self.options.cover).set({ "User-Agent": self.options.userAgent });
 				writeStream.pipe(fs.createWriteStream(destPath));
@@ -342,7 +349,7 @@ class EPub {
 		return Promise.all(self.options.images.map(image => self.downloadImage(image)));
 	}
 
-	genEpub() {
+	genEpub(): Promise<void> {
 		// Thanks to Paul Bradley
 		// http://www.bradleymedia.org/gzip-markdown-epub/ (404 as of 28.07.2016)
 		// Web Archive URL:
@@ -372,4 +379,4 @@ class EPub {
 	}
 }
 
-module.exports = EPub;
+module.exports = Epub;

@@ -47,7 +47,7 @@ function isEmpty(obj) {
 	return keys(obj).length === 0;
 }
 
-function extend(obj) {
+function extend(obj, ...args) {
 	let length = arguments.length;
 	if (length < 2 || obj === null || obj === undefined) {
 		return obj;
