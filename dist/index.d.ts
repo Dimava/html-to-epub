@@ -1,5 +1,6 @@
 import type { CompleteEpubOptions, EpubImage, EpubOptions, filepath } from "./types";
-declare class Epub implements PromiseLike<void> {
+export type { CompleteEpubOptions, EpubImage, EpubOptions, filepath } from "./types";
+export declare class Epub implements PromiseLike<void> {
     static Epub: typeof Epub;
     options: CompleteEpubOptions;
     defer: Promise<void> & {
@@ -17,4 +18,4 @@ declare class Epub implements PromiseLike<void> {
     downloadAllImage(): Promise<unknown[] | undefined>;
     genEpub(): Promise<void>;
 }
-export = Epub;
+export default Epub;

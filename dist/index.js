@@ -8,6 +8,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.Epub = void 0;
 const path = require("path");
 const fs = require("fs");
 const uslug = require("uslug");
@@ -385,6 +387,7 @@ class Epub {
         });
     }
 }
+exports.Epub = Epub;
 // allows `import {Epub}`
 Epub.Epub = Epub;
-module.exports = Epub;
+exports.default = Epub;

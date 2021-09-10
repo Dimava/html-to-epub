@@ -9,11 +9,12 @@ import fsextra = require("fs-extra");
 const { remove: diacritics } = require("diacritics");
 import mime = require("mime");
 import archiver = require("archiver");
-import type { CompleteEpubOptions, EpubImage, EpubOptions, filepath, weburl } from "./types";
+import type { CompleteEpubOptions, EpubImage, EpubOptions, filepath } from "./types";
+export type { CompleteEpubOptions, EpubImage, EpubOptions, filepath } from "./types";
 import { makePromise, extend, isString, isEmpty, uuid, isArray } from "./helpers";
 
 
-class Epub implements PromiseLike<void>{
+export class Epub implements PromiseLike<void>{
 	// allows `import {Epub}`
 	static Epub = Epub;
 	options: CompleteEpubOptions;
@@ -389,4 +390,4 @@ class Epub implements PromiseLike<void>{
 	}
 }
 
-export = Epub;
+export default Epub;
