@@ -8,15 +8,19 @@
 	"bugs": {
 		"url": "https://github.com/lesjoursfr/html-to-epub/issues"
 	},
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
 	"engines": {
 		"node": ">=12"
 	},
 	"scripts": {
+		"build": "tsc",
+		"watch": "tsc --watch",
 		"test": "node test/test.js"
 	},
 	"files": [
 		"index.js",
-		"lib/**/*",
+		"scr/**/*",
 		"templates/**/*"
 	],
 	"keywords": [
