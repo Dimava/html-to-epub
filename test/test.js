@@ -1,4 +1,4 @@
-const EPub = require("../lib");
+const EPub = require("..");
 const path = require("path");
 const fs = require("fs");
 

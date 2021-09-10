@@ -3,7 +3,11 @@
 		"src"
 	],
 	"compilerOptions": {
+		"strict": true,
+		"noImplicitAny": true,
 		"outDir": "dist",
 		"declaration": true,
+		"module": "CommonJS",
+		"target": "ES6",
 	},
 }

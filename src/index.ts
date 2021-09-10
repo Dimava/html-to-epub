@@ -9,31 +9,23 @@ import fsextra = require("fs-extra");
 const { remove: diacritics } = require("diacritics");
 import mime = require("mime");
 import archiver = require("archiver");
+import type { CompleteEpubOptions, EpubImage, EpubOptions, filepath, weburl } from "./types";
+import { makePromise, extend, isString, isEmpty, uuid, isArray } from "./helpers";
 
-class Epub {
-	options: any;
-	defer: any;
-	id: any;
-	uuid: any;
 
-	constructor(options, output) {
-		this.options = options;
+class Epub implements PromiseLike<void>{
+	// allows `import {Epub}`
+	static Epub = Epub;
+	options: CompleteEpubOptions;
+	defer = makePromise<void>();
+	id: string = "";
+	uuid: string = "";
+
+	constructor(options: EpubOptions, output?: filepath) {
 		const self = this;
 
 		if (output) {
-			this.options.output = output;
-		}
-
-		if (!this.options.output) {
-			console.error(new Error("No Output Path"));
-			this.defer.reject(new Error("No output path"));
-			return;
-		}
-
-		if (!options.title || !options.content) {
-			console.error(new Error("Title and content are both required"));
-			this.defer.reject(new Error("Title and content are both required"));
-			return;
+			options.output = output;
 		}
 
 		this.options = extend({
@@ -51,6 +43,18 @@ class Epub {
 			version: 3,
 			userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.105 Safari/537.36"
 		}, options);
+
+		if (!options.output) {
+			console.error(new Error("No Output Path"));
+			this.defer.reject(new Error("No output path"));
+			return;
+		}
+
+		if (!options.title || !options.content) {
+			console.error(new Error("Title and content are both required"));
+			this.defer.reject(new Error("Title and content are both required"));
+			return;
+		}
 
 		if (this.options.version === 2) {
 			this.options.docHeader = `<?xml version="1.0" encoding="UTF-8"?>
@@ -78,7 +82,7 @@ class Epub {
 		this.options.uuid = this.uuid;
 		this.options.id = this.id;
 		this.options.images = [];
-		this.options.content = this.options.content.map(function(content, index) {
+		this.options.content = this.options.content.map(function (content, index) {
 			if (!content.filename) {
 				const titleSlug = uslug(diacritics(content.title || "no title"));
 				content.href = `${index}_${titleSlug}.xhtml`;
@@ -104,7 +108,7 @@ class Epub {
 				content.author = [];
 			}
 
-			const allowedAttributes = ["content", "alt" ,"id","title", "src", "href", "about", "accesskey", "aria-activedescendant", "aria-atomic", "aria-autocomplete", "aria-busy", "aria-checked", "aria-controls", "aria-describedat", "aria-describedby", "aria-disabled", "aria-dropeffect", "aria-expanded", "aria-flowto", "aria-grabbed", "aria-haspopup", "aria-hidden", "aria-invalid", "aria-label", "aria-labelledby", "aria-level", "aria-live", "aria-multiline", "aria-multiselectable", "aria-orientation", "aria-owns", "aria-posinset", "aria-pressed", "aria-readonly", "aria-relevant", "aria-required", "aria-selected", "aria-setsize", "aria-sort", "aria-valuemax", "aria-valuemin", "aria-valuenow", "aria-valuetext", "class", "content", "contenteditable", "contextmenu", "datatype", "dir", "draggable", "dropzone", "hidden", "hreflang", "id", "inlist", "itemid", "itemref", "itemscope", "itemtype", "lang", "media", "ns1:type", "ns2:alphabet", "ns2:ph", "onabort", "onblur", "oncanplay", "oncanplaythrough", "onchange", "onclick", "oncontextmenu", "ondblclick", "ondrag", "ondragend", "ondragenter", "ondragleave", "ondragover", "ondragstart", "ondrop", "ondurationchange", "onemptied", "onended", "onerror", "onfocus", "oninput", "oninvalid", "onkeydown", "onkeypress", "onkeyup", "onload", "onloadeddata", "onloadedmetadata", "onloadstart", "onmousedown", "onmousemove", "onmouseout", "onmouseover", "onmouseup", "onmousewheel", "onpause", "onplay", "onplaying", "onprogress", "onratechange", "onreadystatechange", "onreset", "onscroll", "onseeked", "onseeking", "onselect", "onshow", "onstalled", "onsubmit", "onsuspend", "ontimeupdate", "onvolumechange", "onwaiting", "prefix", "property", "rel", "resource", "rev", "role", "spellcheck", "style", "tabindex", "target", "title", "type", "typeof", "vocab", "xml:base", "xml:lang", "xml:space", "colspan", "rowspan", "epub:type", "epub:prefix"],
+			const allowedAttributes = ["content", "alt", "id", "title", "src", "href", "about", "accesskey", "aria-activedescendant", "aria-atomic", "aria-autocomplete", "aria-busy", "aria-checked", "aria-controls", "aria-describedat", "aria-describedby", "aria-disabled", "aria-dropeffect", "aria-expanded", "aria-flowto", "aria-grabbed", "aria-haspopup", "aria-hidden", "aria-invalid", "aria-label", "aria-labelledby", "aria-level", "aria-live", "aria-multiline", "aria-multiselectable", "aria-orientation", "aria-owns", "aria-posinset", "aria-pressed", "aria-readonly", "aria-relevant", "aria-required", "aria-selected", "aria-setsize", "aria-sort", "aria-valuemax", "aria-valuemin", "aria-valuenow", "aria-valuetext", "class", "content", "contenteditable", "contextmenu", "datatype", "dir", "draggable", "dropzone", "hidden", "hreflang", "id", "inlist", "itemid", "itemref", "itemscope", "itemtype", "lang", "media", "ns1:type", "ns2:alphabet", "ns2:ph", "onabort", "onblur", "oncanplay", "oncanplaythrough", "onchange", "onclick", "oncontextmenu", "ondblclick", "ondrag", "ondragend", "ondragenter", "ondragleave", "ondragover", "ondragstart", "ondrop", "ondurationchange", "onemptied", "onended", "onerror", "onfocus", "oninput", "oninvalid", "onkeydown", "onkeypress", "onkeyup", "onload", "onloadeddata", "onloadedmetadata", "onloadstart", "onmousedown", "onmousemove", "onmouseout", "onmouseover", "onmouseup", "onmousewheel", "onpause", "onplay", "onplaying", "onprogress", "onratechange", "onreadystatechange", "onreset", "onscroll", "onseeked", "onseeking", "onselect", "onshow", "onstalled", "onsubmit", "onsuspend", "ontimeupdate", "onvolumechange", "onwaiting", "prefix", "property", "rel", "resource", "rev", "role", "spellcheck", "style", "tabindex", "target", "title", "type", "typeof", "vocab", "xml:base", "xml:lang", "xml:space", "colspan", "rowspan", "epub:type", "epub:prefix"],
 				allowedXhtml11Tags = ["div", "p", "h1", "h2", "h3", "h4", "h5", "h6", "ul", "ol", "li", "dl", "dt", "dd", "address", "hr", "pre", "blockquote", "center", "ins", "del", "a", "span", "bdo", "br", "em", "strong", "dfn", "code", "samp", "kbd", "bar", "cite", "abbr", "acronym", "q", "sub", "sup", "tt", "i", "b", "big", "small", "u", "s", "strike", "basefont", "font", "object", "param", "img", "table", "caption", "colgroup", "col", "thead", "tfoot", "tbody", "tr", "th", "td", "embed", "applet", "iframe", "img", "map", "noscript", "ns:svg", "object", "script", "table", "tt", "var"];
 
 			let $ = cheerio.load(content.data, {
@@ -114,8 +118,9 @@ class Epub {
 				recognizeSelfClosing: true
 			});
 
-			$($("body > *").get().reverse()).each(function(elemIndex, elem) {
-				const attrs = (elem.type != 'text' && elem.type != 'comment') && elem.attribs;
+			$($("body > *").get().reverse()).each(function (this: any, elemIndex, elem) {
+				if (elem.type == 'text' || elem.type == 'comment') return;
+				const attrs = elem.attribs;
 				const that = this;
 				if (["img", "br", "hr"].includes(that.name)) {
 					if (that.name === "img") {
@@ -143,8 +148,8 @@ class Epub {
 				}
 			});
 
-			$("img").each(function(index, elem) {
-				const url = $(elem).attr("src");
+			$("img").each(function (index, elem) {
+				const url = $(elem).attr("src")!;
 				let extension, id, image;
 				image = self.options.images.find(element => element.url === url);
 				if (image) {
@@ -153,9 +158,9 @@ class Epub {
 				} else {
 					id = uuid();
 					const { dir } = content,
-						mediaType = mime.getType(url.replace(/\?.*/, ""));
-					extension = mime.getExtension(mediaType);
-					self.options.images.push({id, url, dir, mediaType, extension});
+						mediaType = mime.getType(url.replace(/\?.*/, ""))!;
+					extension = mime.getExtension(mediaType)!;
+					self.options.images.push({ id, url, dir, mediaType, extension });
 				}
 				$(elem).attr("src", `images/${id}.${extension}`);
 			});
@@ -165,13 +170,17 @@ class Epub {
 		});
 
 		if (this.options.cover) {
-			this.options._coverMediaType = mime.getType(this.options.cover);
+			this.options._coverMediaType = mime.getType(this.options.cover)!;
 			this.options._coverExtension = mime.getExtension(this.options._coverMediaType);
 		}
 
 		// FIXME: constructor can't return
 		// make Epub thenable maybe
 		this.render();
+	}
+
+	then<TResult1 = void, TResult2 = never>(onfulfilled?: ((value: void) => TResult1 | PromiseLike<TResult1>) | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null): PromiseLike<TResult1 | TResult2> {
+		return this.defer.then(onfulfilled, onrejected);
 	}
 
 	async render() {
@@ -201,7 +210,7 @@ class Epub {
 		}
 		fs.mkdirSync(this.uuid);
 		fs.mkdirSync(path.resolve(this.uuid, "./OEBPS"));
-		if (!this.options.css) { this.options.css = fs.readFileSync(path.resolve(__dirname, "../templates/template.css")); }
+		if (!this.options.css) { this.options.css = fs.readFileSync(path.resolve(__dirname, "../templates/template.css"), "utf-8"); }
 		fs.writeFileSync(path.resolve(this.uuid, "./OEBPS/style.css"), this.options.css);
 		if (self.options.fonts.length) {
 			fs.mkdirSync(path.resolve(this.uuid, "./OEBPS/fonts"));
@@ -252,22 +261,22 @@ class Epub {
 		if (!fs.existsSync(opfPath)) {
 			throw new Error("Custom file to OPF template not found.");
 		}
-		fs.writeFileSync(path.resolve(self.uuid , "./OEBPS/content.opf"), await ejs.renderFile(opfPath, self.options));
+		fs.writeFileSync(path.resolve(self.uuid, "./OEBPS/content.opf"), await ejs.renderFile(opfPath, self.options));
 
-		ncxTocPath = self.options.customNcxTocTemplatePath || path.resolve(__dirname , "../templates/toc.ncx.ejs");
+		ncxTocPath = self.options.customNcxTocTemplatePath || path.resolve(__dirname, "../templates/toc.ncx.ejs");
 		if (!fs.existsSync(ncxTocPath)) {
 			throw new Error("Custom file the NCX toc template not found.");
 		}
-		fs.writeFileSync(path.resolve(self.uuid , "./OEBPS/toc.ncx"), await ejs.renderFile(ncxTocPath, self.options));
+		fs.writeFileSync(path.resolve(self.uuid, "./OEBPS/toc.ncx"), await ejs.renderFile(ncxTocPath, self.options));
 
 		htmlTocPath = self.options.customHtmlTocTemplatePath || path.resolve(__dirname, `../templates/epub${self.options.version}/toc.xhtml.ejs`);
 		if (!fs.existsSync(htmlTocPath)) {
 			throw new Error("Custom file to HTML toc template not found.");
 		}
-		fs.writeFileSync(path.resolve(self.uuid , "./OEBPS/toc.xhtml"), await ejs.renderFile(htmlTocPath, self.options));
+		fs.writeFileSync(path.resolve(self.uuid, "./OEBPS/toc.xhtml"), await ejs.renderFile(htmlTocPath, self.options));
 	}
 
-	makeCover(): Promise<void> {
+	makeCover(): void | Promise<void> {
 		if (!this.options.cover) {
 			return;
 		}
@@ -276,8 +285,9 @@ class Epub {
 			destPath = path.resolve(this.uuid, ("./OEBPS/cover." + this.options._coverExtension));
 
 		return new Promise((resolve, reject) => {
-			let writeStream: ReturnType<(typeof fs)['createReadStream']> | ReturnType<(typeof request)['get']> = null; 
-			if (self.options.cover.slice(0,4) === "http") {
+			let writeStream: ReturnType<(typeof fs)['createReadStream']> | ReturnType<(typeof request)['get']>;
+			if (!self.options.cover) throw new Error('missing options.cover');
+			if (self.options.cover.slice(0, 4) === "http") {
 				writeStream = request.get(self.options.cover).set({ "User-Agent": self.options.userAgent });
 				writeStream.pipe(fs.createWriteStream(destPath));
 			} else {
@@ -285,18 +295,18 @@ class Epub {
 				writeStream.pipe(fs.createWriteStream(destPath));
 			}
 
-			writeStream.on("end", function() {
+			writeStream.on("end", function () {
 				if (self.options.verbose) { console.log("[Success] cover image downloaded successfully!"); }
 				resolve();
 			});
-			writeStream.on("error", function(err) {
+			writeStream.on("error", function (err) {
 				console.error("Error", err);
 				reject(err);
 			});
 		});
 	}
 
-	downloadImage(options) {  // {id, url, mediaType}
+	downloadImage(options: EpubImage) {  // {id, url, mediaType}
 		if (!options.url && (typeof options !== "string")) {
 			return Promise.resolve(false);
 		}
@@ -324,13 +334,13 @@ class Epub {
 					requestAction = fs.createReadStream(path.resolve(options.dir, options.url));
 					requestAction.pipe(fs.createWriteStream(filename));
 				}
-				requestAction.on("error", function(err) {
-					if (self.options.verbose) { console.error("[Download Error]" ,"Error while downloading", options.url, err); }
+				requestAction.on("error", function (err) {
+					if (self.options.verbose) { console.error("[Download Error]", "Error while downloading", options.url, err); }
 					fs.unlinkSync(filename);
 					reject(err);
 				});
 
-				requestAction.on("end", function() {
+				requestAction.on("end", function () {
 					if (self.options.verbose) { console.log("[Download Success]", options.url); }
 					resolve(options);
 				});
@@ -361,14 +371,14 @@ class Epub {
 			cwd = this.uuid;
 
 		return new Promise((resolve, reject) => {
-			let archive = archiver("zip", {zlib: {level: 9}}),
+			let archive = archiver("zip", { zlib: { level: 9 } }),
 				output = fs.createWriteStream(self.options.output);
 			if (self.options.verbose) { console.log("Zipping temp dir to", self.options.output); }
-			archive.append("application/epub+zip", {store:true, name:"mimetype"});
+			archive.append("application/epub+zip", { store: true, name: "mimetype" });
 			archive.directory(cwd + "/META-INF", "META-INF");
 			archive.directory(cwd + "/OEBPS", "OEBPS");
 			archive.pipe(output);
-			archive.on("end", function() {
+			archive.on("end", function () {
 				if (self.options.verbose) { console.log("Done zipping, clearing temp dir..."); }
 				fsextra.removeSync(cwd);
 				resolve();
@@ -379,4 +389,4 @@ class Epub {
 	}
 }
 
-module.exports = Epub;
+export = Epub;
